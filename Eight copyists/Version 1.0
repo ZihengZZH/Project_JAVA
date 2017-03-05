@@ -1,1 +1,107 @@
 // Code Version 5th March 2017
+// Achieved multiprogramming, Thread, Random time, without deadlock?
+// Next step two sub-class inheritance from class Drawing indicatin different tools
+// Keep going
+
+package assignment_1;
+
+import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+class Copyist extends Thread{
+    private String name;
+    private Drawing draw;
+    private int pauseFactor;
+    private Random rand = new Random(200);
+    
+    public Copyist(String name, Drawing draw, int pauseFactor){
+        super(name);
+        this.name = name;
+        this.draw = draw;
+        this.pauseFactor = pauseFactor;
+    }
+    
+    public void run(){
+        try {
+            while(!Thread.interrupted()){
+                waiting(); 
+                draw.takeDrawing();
+                draw.putDrawing();
+                drawing();
+                quiting();
+            }
+        } catch (InterruptedException e) {
+            System.out.println("Unexpected error!");
+        }
+    }
+    
+    public void waiting() throws InterruptedException{
+        System.out.println("Copyist " + name + " is waiting.");
+        TimeUnit.MILLISECONDS.sleep(pauseFactor*rand.nextInt(100));
+    }
+    
+    public void drawing(){
+        System.out.println("Copyist " + name + " is making drawing.");
+        try {
+            sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void pending(){
+        
+    }
+    
+    public void quiting(){
+        
+    }
+}
+
+class Drawing{
+    public boolean[] used = {false, false, false, false, false, false, false, false};
+    public synchronized void takeDrawing(){
+        String name = Thread.currentThread().getName();
+        int i = Integer.parseInt(name);
+        while(used[i] || used[(i+1) % 8]){
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        used[i] = true;
+        used[(i+1) % 8] = true;
+    }
+    
+    public synchronized void putDrawing(){
+        String name = Thread.currentThread().getName();
+        int i = Integer.parseInt(name);
+        
+        used[i] = false;
+        used[(i+1) % 8] = false;
+        notifyAll();
+    }
+}
+
+class Pencil extends Drawing{
+    
+}
+
+class Eidograph extends Drawing{
+    
+}
+
+public class Assignment_1 {
+
+    public static void main(String[] args) {
+        Drawing draw = new Drawing();
+        int pauseFactor = 0;
+        for (int i = 0; i < 8; i++){
+            String id = Integer.toString(i);
+            new Copyist(id, draw, pauseFactor).start();
+        }      
+    } 
+}
