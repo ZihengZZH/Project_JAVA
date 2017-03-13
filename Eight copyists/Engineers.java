@@ -1,25 +1,26 @@
 // Name: Ziheng ZHANG;  ID: 201220030
 // Version 2.0
+package Engineers;
 
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 class Copyist extends Thread {
-    private Drawing left;
-    private Drawing right;
+    private Pencil pencil;
+    private Eidograph eidograph;
     private int id;
     private int ponderFactor;
-    private boolean drawEd;
-    private Random rand = new Random(47);
+    private int drawing;
+    private Random rand = new Random(100);
 
-    public Copyist(Drawing left, Drawing right, int id, int ponderFactor) {
-        this.left = left;
-        this.right = right;
+    public Copyist(Pencil pencil, Eidograph eidograph, int id, int ponderFactor) {
+        this.pencil = pencil;
+        this.eidograph = eidograph;
         this.id = id;
         this.ponderFactor = ponderFactor;
-        this.drawEd = false;
+        this.drawing = 1;
     }
 
     private void pause() throws InterruptedException {
@@ -31,42 +32,88 @@ class Copyist extends Thread {
 
     public void run() {
         try {
-            while ((!Thread.interrupted())&&(!drawEd)) {
+            while ((!Thread.interrupted())&&(drawing < 6)) {
                 System.out.println(this + " is waiting.");
                 pause();
-                System.out.println(this + " is grabbing right.");
-                right.take();
-                System.out.println(this + " is grabbing left.");
-                left.take();
-                System.out.println(this + " is drawing.");
-                pause();
-                right.drop();
-                left.drop();
-                System.out.println(this + " has completed drawing.");
-                drawEd = true;
+                System.out.println(this + " is using pencil.");
+                pencil.take();
+                System.out.println(this + " is using eidograph.");
+                eidograph.take();
+                copying();
+                pencil.drop();
+                System.out.println(this + " has finished with pencil.");
+                eidograph.drop();
+                System.out.println(this + " has finished with eidograph.");
+                checking();
+                drawing++;
             }
+            System.out.println(this + " has finished work and gone to pub.");
         } catch (InterruptedException e) {
             System.out.println(this + " exiting via interrupt");
         }
     }
-
+    
+    // ODD copyist 30 <= Copying <= 80
+    // EVEN copyist 30 <= Copying <= 60
+    public void copying(){
+        System.out.println(this + " is making drawing.");
+        try{
+            if((this.id & 2) == 0){
+                sleep(rand.nextInt(60-30));
+            }else{
+                sleep(rand.nextInt(80-30));
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    // ODD copyist 40 <= Checking <= 60
+    // EVEN copyist 40 <= Checking <= 100
+    public void checking(){
+        System.out.println(this + " has finished copy " + this.drawing);
+        System.out.println(this + " is checking copy " + this.drawing);
+        try{
+            if((this.id & 2) == 0){
+                sleep(rand.nextInt(100-40));
+            }else{
+                sleep(rand.nextInt(60-40));
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    // Override toString
     public String toString() {
         return "Copyist " + id;
     }
 }
 
-class Drawing {
-    private boolean taken = false;
-
+class Pencil{
+    private boolean takenPencil = false;
     public synchronized void take() throws InterruptedException {
-        while (taken) {
+        while (takenPencil) {
             wait();
         }
-        taken = true;
+        takenPencil = true;
     }
-
     public synchronized void drop() {
-        taken = false;
+        takenPencil = false;
+        notifyAll();
+    }
+}
+
+class Eidograph{
+    private boolean takenEido = false;
+    public synchronized void take() throws InterruptedException {
+        while (takenEido) {
+            wait();
+        }
+        takenEido = true;
+    }
+    public synchronized void drop() {
+        takenEido = false;
         notifyAll();
     }
 }
@@ -74,20 +121,37 @@ class Drawing {
 public class Engineers {
 
     public static void main(String[] args) throws Exception {
-        int ponder = 10;
+        int ponder = 1;
         int size = 8;
         ExecutorService exec = Executors.newCachedThreadPool();
-        Drawing[] sticks = new Drawing[size];
-        for (int i = 0; i < size; i++) {
-            sticks[i] = new Drawing();
+        Pencil[] pencil = new Pencil[size/2];
+        Eidograph[] eidograph = new Eidograph[size/2];
+        for (int i = 0; i < 4; i++) {
+            pencil[i] = new Pencil();
+            eidograph[i] = new Eidograph();
         }
-        for (int i = 0; i < size; i++) {
-            if (i < (size - 1)) {
-                exec.execute(new Copyist(sticks[i], sticks[i + 1], i, ponder));
-            } else {
-                exec.execute(new Copyist(sticks[0], sticks[i], i, ponder));
-            }
-        }
+        
+//        for (int i = 0; i < size; i++){
+//            if ((i % 2) == 0) {
+//                if (i < (size - 1)){
+//                    exec.execute(new Copyist(pencil[i], eidograph[i + 1], i, ponder));
+//                }else{
+//                    exec.execute(new Copyist(pencil[i], eidograph[i + 1], i, ponder));
+//                }
+//            } else {
+//                exec.execute(new Copyist(pencil[0], eidograph[i], i, ponder));
+//            }
+//        }
+        
+        exec.execute(new Copyist(pencil[3], eidograph[0], 0, ponder));
+        exec.execute(new Copyist(pencil[0], eidograph[0], 1, ponder));
+        exec.execute(new Copyist(pencil[0], eidograph[1], 2, ponder));
+        exec.execute(new Copyist(pencil[1], eidograph[1], 3, ponder));
+        exec.execute(new Copyist(pencil[1], eidograph[2], 4, ponder));
+        exec.execute(new Copyist(pencil[2], eidograph[2], 5, ponder));
+        exec.execute(new Copyist(pencil[2], eidograph[3], 6, ponder));
+        exec.execute(new Copyist(pencil[3], eidograph[3], 7, ponder));
+        
         TimeUnit.SECONDS.sleep(5);
         exec.shutdownNow();
     }
